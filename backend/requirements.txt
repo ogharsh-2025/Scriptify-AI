@@ -1,0 +1,10 @@
+flask
+flask-cors
+deep-translator
+pytesseract
+opencv-python
+pillow
+numpy
+langdetect
+SpeechRecognition
+gTTS
