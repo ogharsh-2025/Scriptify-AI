@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Scriptify AI - Intelligent Script & Language Translator</title>
+    <!-- Google Fonts -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <!-- FontAwesome for Icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="loadingOverlay" class="hidden">
+      <div class="spinner"></div>
+      <p>Processing with AI...</p>
+    </div>
+
+    <!-- Auth Overlay -->
+    <div id="authOverlay" class="auth-overlay">
+      <div class="auth-box glassmorphism">
+        <h2 id="authTitle">Welcome to Scriptify</h2>
+        <p id="authSubtitle">Please log in to access the translator</p>
+        
+        <form id="authForm" onsubmit="handleAuth(event)">
+          <div class="input-group hidden" id="nameGroup">
+            <i class="fa-solid fa-user"></i>
+            <input type="text" id="authName" placeholder="Full Name" />
+          </div>
+          <div class="input-group">
+            <i class="fa-solid fa-envelope"></i>
+            <input type="email" id="authEmail" placeholder="Email Address" required />
+          </div>
+          <div class="input-group">
+            <i class="fa-solid fa-lock"></i>
+            <input type="password" id="authPassword" placeholder="Password" required />
+          </div>
+          <button type="submit" class="btn primary full-width mt-3" id="authSubmitBtn">
+            Login
+          </button>
+        </form>
+        
+        <div class="auth-switch">
+          <span id="authSwitchText">Don't have an account?</span>
+          <a href="#" onclick="toggleAuthMode(event)" id="authSwitchLink">Sign Up</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content wrapper to hide until auth -->
+    <div id="mainAppContent" class="hidden">
+
+    <!-- 1. Hero Section -->
+    <header class="hero">
+      <div class="nav">
+        <h1 class="logo"><i class="fa-solid fa-language"></i> Scriptify AI</h1>
+        <div style="display: flex; gap: 15px; align-items: center;">
+          <button class="icon-btn" id="themeToggleBtn" title="Toggle Light/Dark Mode" style="width: 40px; height: 40px;">
+            <i class="fa-solid fa-sun"></i>
+          </button>
+          <button class="nav-btn" onclick="logoutUser()">
+            Log Out
+          </button>
+        </div>
+      </div>
+      <div class="hero-content">
+        <h1 class="hero-title" id="animatedHeading">AI Script Translator</h1>
+        <p class="hero-subtitle">Extract. Translate. Understand.</p>
+        <button class="cta-btn" onclick="scrollToSection('dashboard')">
+          Start Translating <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+      <div class="hero-bg-animated"></div>
+    </header>
+
+    <!-- 2. Main Translation Dashboard -->
+    <section id="dashboard" class="dashboard-section glassmorphism">
+      <h2 class="section-title">Translation Hub</h2>
+      <div class="split-layout">
+        <!-- LEFT SIDE -->
+        <div class="panel left-panel">
+          <h3><i class="fa-solid fa-upload"></i> Input Source</h3>
+
+          <div class="upload-area" id="dropZone">
+            <i class="fa-solid fa-image fa-3x"></i>
+            <p>Drag & Drop Image or Click to Upload</p>
+            <input type="file" id="imageInput" accept="image/*" hidden />
+          </div>
+
+          <div class="image-preview-container hidden" id="previewContainer">
+            <img id="imagePreview" src="" alt="Preview" />
+            <button class="icon-btn remove-btn" onclick="clearImage()">
+              <i class="fa-solid fa-times"></i>
+            </button>
+          </div>
+
+          <div class="action-buttons">
+            <button class="btn secondary" id="cameraBtn">
+              <i class="fa-solid fa-camera"></i> Camera Capture
+            </button>
+            <button class="btn secondary" id="micBtn" title="Speech to Text">
+              <i class="fa-solid fa-microphone"></i> Voice Input
+            </button>
+            <button class="btn primary disabled" id="extractTextBtn">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Extract Text (OCR)
+            </button>
+          </div>
+
+          <div class="video-container hidden" id="videoContainer">
+            <video id="cameraStream" autoplay playsinline></video>
+            <button class="btn capture-btn" id="captureBtn">Take Photo</button>
+            <button class="btn secondary" onclick="stopCamera()">Cancel</button>
+            <canvas id="cameraCanvas" hidden></canvas>
+          </div>
+
+          <!-- Also allow manual text typing -->
+          <div class="text-input-group mt-3">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <label style="margin: 0;">Or type/paste text directly:</label>
+              <button class="icon-btn" id="clearInputBtn" title="Clear Text" style="width: 28px; height: 28px; font-size: 0.8rem;">
+                <i class="fa-solid fa-rotate-right"></i>
+              </button>
+            </div>
+            <textarea
+              id="inputText"
+              placeholder="Enter text to translate or wait for OCR output..."
+            ></textarea>
+            <div class="word-count">Chars: <span id="charCountIn">0</span></div>
+          </div>
+        </div>
+
+        <!-- RIGHT SIDE -->
+        <div class="panel right-panel">
+          <h3><i class="fa-solid fa-language"></i> Output</h3>
+
+          <div class="controls">
+            <div class="control-group">
+              <label>Detect Language (Auto)</label>
+              <button class="btn secondary sm" id="detectLangBtn">
+                <i class="fa-solid fa-radar"></i> Detect
+              </button>
+              <span id="detectedLangBadge" class="badge hidden"
+                >English (99%)</span
+              >
+            </div>
+
+            <div class="control-group">
+              <label>Target Language</label>
+              <select id="targetLanguage">
+                <option value="en">English</option>
+                <option value="es">Spanish</option>
+                <option value="fr">French</option>
+                <option value="de">German</option>
+                <option value="hi">Hindi</option>
+                <option value="zh-CN">Chinese (Simplified)</option>
+                <option value="ja">Japanese</option>
+                <option value="ru">Russian</option>
+                <option value="ar">Arabic</option>
+              </select>
+            </div>
+          </div>
+
+          <button class="btn primary full-width" id="translateBtn">
+            <i class="fa-solid fa-language"></i> Translate Now
+          </button>
+
+          <div class="output-container">
+            <textarea
+              id="outputText"
+              readonly
+              placeholder="Translation will appear here..."
+            ></textarea>
+            <div class="word-count">
+              Chars: <span id="charCountOut">0</span>
+            </div>
+            <div class="output-actions">
+              <button class="icon-btn" id="copyBtn" title="Copy">
+                <i class="fa-regular fa-copy"></i>
+              </button>
+              <button class="icon-btn" id="listenBtn" title="Listen (TTS)">
+                <i class="fa-solid fa-volume-high"></i>
+              </button>
+              <button class="icon-btn" id="downloadPdfBtn" title="Download PDF">
+                <i class="fa-solid fa-file-pdf"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Special Modes -->
+          <div class="special-modes mt-3">
+            <h4>Fun Conversions</h4>
+            <div class="mode-buttons">
+              <button
+                class="btn secondary sm"
+                onclick="convertScript('binary')"
+              >
+                Binary
+              </button>
+              <button class="btn secondary sm" onclick="convertScript('morse')">
+                Morse
+              </button>
+              <button
+                class="btn secondary sm"
+                onclick="convertScript('pig_latin')"
+              >
+                Pig Latin
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Stats Cards -->
+    <section class="stats-section">
+      <div class="stat-card">
+        <div class="stat-icon"><i class="fa-solid fa-globe"></i></div>
+        <h3 class="counter" id="totalTranslationsStat">----</h3>
+        <p style="display:flex; justify-content:center; align-items:center; gap:8px;">
+          Total Translations
+          <button class="icon-btn" id="refreshStatsBtn" style="width:28px; height:28px;" title="Refresh">
+            <i class="fa-solid fa-rotate-right"></i>
+          </button>
+        </p>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
+        <h3 class="counter" id="totalUsersStat">0</h3>
+        <p>Total Users</p>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon"><i class="fa-solid fa-bullseye"></i></div>
+        <h3 class="counter">98.5%</h3>
+        <p>OCR Accuracy</p>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon"><i class="fa-solid fa-language"></i></div>
+        <h3 class="counter">9</h3>
+        <p>Supported Languages</p>
+      </div>
+    </section>
+
+
+
+    <!-- 5. Features Section -->
+    <section class="features-section">
+      <h2 class="section-title">Why Scriptify AI?</h2>
+      <div class="features-grid">
+        <div class="feature-card glassmorphism">
+          <i class="fa-solid fa-bolt fa-2x feature-icon"></i>
+          <h3>Real-time OCR</h3>
+          <p>
+            Lightning fast text extraction from images using advanced AI models.
+          </p>
+        </div>
+        <div class="feature-card glassmorphism">
+          <i class="fa-solid fa-earth-americas fa-2x feature-icon"></i>
+          <h3>Multi-language</h3>
+          <p>
+            Seamlessly translate between 100+ global languages with context
+            awareness.
+          </p>
+        </div>
+        <div class="feature-card glassmorphism">
+          <i class="fa-solid fa-brain fa-2x feature-icon"></i>
+          <h3>AI-powered Accuracy</h3>
+          <p>
+            Deep learning algorithms ensure translations retain their perfect
+            meaning.
+          </p>
+        </div>
+        <div class="feature-card glassmorphism">
+          <i class="fa-solid fa-camera-retro fa-2x feature-icon"></i>
+          <h3>Camera Integration</h3>
+          <p>Capture real-world text instantly via your device's camera.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. Footer -->
+    <footer>
+      <div class="footer-content">
+        <div class="footer-brand">Scriptify AI</div>
+        <!-- ... -->
+        <p class="copyright">
+          &copy; 2026 Scriptify AI Prototype. All rights reserved.
+        </p>
+      </div>
+    </footer>
+    </div> <!-- End mainAppContent -->
+
+    <!-- Toasts container -->
+    <div id="toastContainer"></div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
