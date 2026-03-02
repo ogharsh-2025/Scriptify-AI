@@ -1,4 +1,7 @@
-const API_BASE = 'http://127.0.0.1:5000';
+const API_BASE = window.location.hostname === "localhost"
+    ? "http://127.0.0.1:5000"
+    : "https://scriptify-ai.onrender.com";
+
 
 // Auth State
 let isLoggedIn = false;
@@ -510,3 +513,4 @@ if (clearInputBtn) {
         setTimeout(() => clearInputBtn.querySelector('i').classList.remove('fa-spin'), 300);
     });
 }
+
